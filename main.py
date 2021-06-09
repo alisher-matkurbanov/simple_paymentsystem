@@ -1,95 +1,28 @@
-import enum
 import logging
 import uuid
-from typing import Union
+from typing import Union, Tuple
 
 import asyncpg
 import databases
-import sqlalchemy
 from fastapi import FastAPI, Response, status
-from pydantic import BaseModel
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Integer,
-    String,
-    Table,
-    func,
-)
-from sqlalchemy.dialects.postgresql import NUMERIC, UUID
+from pydantic import BaseModel, Field
+
+from database import DATABASE_URL
+from dbmodels import Currency, accounts, wallets
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-
-DATABASE_URL = "postgresql://paymentsystem:paymentsystem@localhost:5432/paymentsystem"
-
-database = databases.Database(DATABASE_URL)
-metadata = sqlalchemy.MetaData()
+db = databases.Database(DATABASE_URL)
 
 
-class TransactionType(enum.Enum):
-    replenish = "REPLENISH"
-    transfer = "TRANSFER"
+class AccountCreateRequest(BaseModel):
+    name: str = Field(..., title="Name of the account", max_length=32)
 
 
-accounts = Table(
-    "account",
-    metadata,
-    Column("id", UUID(as_uuid=True), primary_key=True),
-    Column("name", String(32)),
-    Column("is_active", Boolean, default=True, nullable=False),
-    Column("created_at", DateTime(timezone=True), server_default=func.now()),
-    Column("updated_at", DateTime(timezone=True), onupdate=func.now()),
-)
-
-wallets = Table(
-    "wallet",
-    metadata,
-    Column("id", UUID(as_uuid=True), primary_key=True),
-    Column("account_id", ForeignKey("account.id"), nullable=False),
-    Column("currency", ForeignKey("currency.code"), nullable=False),
-    Column("amount", NUMERIC(precision=2), nullable=False),
-    Column("is_active", Boolean, default=True, nullable=False),
-    Column(
-        "created_at", DateTime(timezone=True), server_default=func.now(), nullable=False
-    ),
-    Column("updated_at", DateTime(timezone=True), onupdate=func.now()),
-)
-
-currencies = Table("currency", metadata, Column("code", String(3), primary_key=True))
-
-transactions = Table(
-    "transaction",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("type", Enum(TransactionType), nullable=False),
-    Column(
-        "created_at", DateTime(timezone=True), server_default=func.now(), nullable=False
-    ),
-)
-
-posting = Table(
-    "posting",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("transaction_id", ForeignKey("transaction.id"), nullable=False),
-    Column("wallet_id", ForeignKey("wallet.id"), nullable=False),
-    Column("amount", NUMERIC(precision=2), nullable=False),
-    Column("currency", ForeignKey("currency.code"), nullable=False),
-)
-
-
-class CreateAccountRequest(BaseModel):
-    name: str
-
-
-class CreateAccountResponse(BaseModel):
+class AccountCreateResponse(BaseModel):
     account_id: str
-    name: str
+    wallet_id: str
 
 
 class APIError(BaseModel):
@@ -98,37 +31,54 @@ class APIError(BaseModel):
 
 @app.on_event("startup")
 async def startup():
-    await database.connect()
+    await db.connect()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await database.disconnect()
+    await db.disconnect()
 
 
-async def _create_account(account):
+async def _create_account_with_wallet(account: AccountCreateRequest):
+    wallet_id = uuid.uuid4()
     account_id = uuid.uuid4()
-    with database.transaction():
+    async with db.transaction():
         insert_account = accounts.insert().values(
-            id=account_id, name=account.name, is_active=True
+            id=account_id,
+            name=account.name,
+            is_active=True,
         )
-        await database.execute(insert_account)
-
-    return account_id
+        insert_wallet = wallets.insert().values(
+            id=wallet_id,
+            account_id=account_id,
+            currency=Currency.USD,
+            amount=0,
+            is_active=True,
+        )
+        await db.execute(insert_account)
+        await db.execute(insert_wallet)
+    
+    return account_id, wallet_id
 
 
 # TODO Добавить идемпотентность
 @app.post(
     "/accounts",
     status_code=status.HTTP_201_CREATED,
-    response_model=Union[CreateAccountResponse, APIError],
+    response_model=Union[AccountCreateResponse, APIError],
 )
-async def create_account(account: CreateAccountRequest, response: Response):
+async def create_account(account: AccountCreateRequest, response: Response):
+    # we try to create account with wallet 5 times,
+    # then report that we can't create account.
+    # creation may fails if generated uuid already presented in database.
     attempts = 5
     while attempts != 0:
         try:
-            account_id = await _create_account(account)
-            return CreateAccountResponse(account_id=str(account_id), name=account.name)
+            account_id, wallet_id = await _create_account_with_wallet(account)
+            return AccountCreateResponse(
+                account_id=str(account_id),
+                wallet_id=str(wallet_id),
+            )
         except asyncpg.exceptions.UniqueViolationError as e:
             attempts -= 1
             if attempts != 0:
@@ -138,6 +88,9 @@ async def create_account(account: CreateAccountRequest, response: Response):
             return APIError(
                 error=f"can't create account '{account.name}'; try again later"
             )
+        except Exception as e:
+            logger.exception(e)
+            return APIError()
 
 
 @app.get("/accounts/{account_id}")
@@ -153,35 +106,3 @@ async def replenish_wallet():
 @app.post("/transfer")
 async def transfer_money():
     raise NotImplemented
-
-
-# accounts
-# - account_id: UUID
-# - name: String
-# - active: Bool
-# - created_at
-# - updated_at
-
-# wallet 1 - 1 to accounts
-# - account_id: UUID
-# - wallet_id: UUID
-# - currency_id: int
-# - amount: Decimal
-# - active: Bool
-# - created_at
-# - updated_at
-
-# currency
-# - code
-
-# journal
-# - journal_id
-# - transaction_type
-# - created_at
-
-# posting
-# - posting_id
-# - journal_id
-# - wallet_id
-# - amount
-# - currency_id

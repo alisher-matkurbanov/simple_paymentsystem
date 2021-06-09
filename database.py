@@ -1,5 +1,5 @@
-# CREATE DATABASE yourdbname;
-# CREATE USER youruser WITH ENCRYPTED PASSWORD 'yourpass';
-# GRANT ALL PRIVILEGES ON DATABASE yourdbname TO youruser;
+from sqlalchemy import MetaData
 
-
+# TODO secure the credentials
+DATABASE_URL = "postgresql://paymentsystem:paymentsystem@localhost:5432/paymentsystem"
+metadata = MetaData()

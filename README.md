@@ -11,3 +11,41 @@ https://fastapi.tiangolo.com/tutorial/sql-databases/
 todo параметризовать алембик в докере
 todo приделать идемпотентность
 todo разбить на файлы
+
+# CREATE DATABASE yourdbname;
+# CREATE USER youruser WITH ENCRYPTED PASSWORD 'yourpass';
+# GRANT ALL PRIVILEGES ON DATABASE yourdbname TO youruser;
+
+
+
+
+# accounts
+# - account_id: UUID
+# - name: String
+# - active: Bool
+# - created_at
+# - updated_at
+
+# wallet 1 - 1 to accounts
+# - account_id: UUID
+# - wallet_id: UUID
+# - currency_id: int
+# - amount: Decimal
+# - active: Bool
+# - created_at
+# - updated_at
+
+# currency
+# - code
+
+# journal
+# - journal_id
+# - transaction_type
+# - created_at
+
+# posting
+# - posting_id
+# - journal_id
+# - wallet_id
+# - amount
+# - currency_id

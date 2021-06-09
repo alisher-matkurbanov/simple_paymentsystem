@@ -7,7 +7,6 @@ from alembic import context
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-import main
 
 config = context.config
 
@@ -17,7 +16,9 @@ fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from main import metadata
+from dbmodels import accounts, wallets, transactions, currencies, posting
+from database import metadata
+
 target_metadata = metadata
 
 
