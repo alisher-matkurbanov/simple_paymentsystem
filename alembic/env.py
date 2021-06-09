@@ -17,7 +17,7 @@ fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from main import accounts, metadata
+from main import metadata
 target_metadata = metadata
 
 

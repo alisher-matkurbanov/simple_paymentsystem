@@ -1,3 +1,4 @@
+import enum
 import logging
 import uuid
 from typing import Union
@@ -7,8 +8,18 @@ import databases
 import sqlalchemy
 from fastapi import FastAPI, Response, status
 from pydantic import BaseModel
-from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    func,
+)
+from sqlalchemy.dialects.postgresql import NUMERIC, UUID
 
 logger = logging.getLogger(__name__)
 
@@ -19,19 +30,56 @@ DATABASE_URL = "postgresql://paymentsystem:paymentsystem@localhost:5432/payments
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
-accounts = sqlalchemy.Table(
+
+class TransactionType(enum.Enum):
+    replenish = "REPLENISH"
+    transfer = "TRANSFER"
+
+
+accounts = Table(
     "account",
     metadata,
-    sqlalchemy.Column("id", UUID(as_uuid=True), primary_key=True),
-    sqlalchemy.Column("name", sqlalchemy.String(32)),
-    sqlalchemy.Column("is_active", sqlalchemy.Boolean, default=True),
-    # https://stackoverflow.com/questions/13370317/sqlalchemy-default-datetime
-    sqlalchemy.Column(
-        "created_at", sqlalchemy.DateTime(timezone=True), server_default=func.now()
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column("name", String(32)),
+    Column("is_active", Boolean, default=True, nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), onupdate=func.now()),
+)
+
+wallets = Table(
+    "wallet",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    Column("account_id", ForeignKey("account.id"), nullable=False),
+    Column("currency", ForeignKey("currency.code"), nullable=False),
+    Column("amount", NUMERIC(precision=2), nullable=False),
+    Column("is_active", Boolean, default=True, nullable=False),
+    Column(
+        "created_at", DateTime(timezone=True), server_default=func.now(), nullable=False
     ),
-    sqlalchemy.Column(
-        "updated_at", sqlalchemy.DateTime(timezone=True), onupdate=func.now()
+    Column("updated_at", DateTime(timezone=True), onupdate=func.now()),
+)
+
+currencies = Table("currency", metadata, Column("code", String(3), primary_key=True))
+
+transactions = Table(
+    "transaction",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("type", Enum(TransactionType), nullable=False),
+    Column(
+        "created_at", DateTime(timezone=True), server_default=func.now(), nullable=False
     ),
+)
+
+posting = Table(
+    "posting",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("transaction_id", ForeignKey("transaction.id"), nullable=False),
+    Column("wallet_id", ForeignKey("wallet.id"), nullable=False),
+    Column("amount", NUMERIC(precision=2), nullable=False),
+    Column("currency", ForeignKey("currency.code"), nullable=False),
 )
 
 
@@ -59,17 +107,20 @@ async def shutdown():
 
 
 async def _create_account(account):
-    # todo create wallet in transaction
     account_id = uuid.uuid4()
-    query = accounts.insert().values(id=account_id, name=account.name, is_active=True)
-    await database.execute(query)
+    with database.transaction():
+        insert_account = accounts.insert().values(
+            id=account_id, name=account.name, is_active=True
+        )
+        await database.execute(insert_account)
+
     return account_id
 
 
 # TODO Добавить идемпотентность
 @app.post(
     "/accounts",
-    status_code=Union[status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST],
+    status_code=status.HTTP_201_CREATED,
     response_model=Union[CreateAccountResponse, APIError],
 )
 async def create_account(account: CreateAccountRequest, response: Response):
@@ -103,9 +154,10 @@ async def replenish_wallet():
 async def transfer_money():
     raise NotImplemented
 
+
 # accounts
 # - account_id: UUID
-# - name: String for Firdavs
+# - name: String
 # - active: Bool
 # - created_at
 # - updated_at
@@ -120,8 +172,7 @@ async def transfer_money():
 # - updated_at
 
 # currency
-# - currency_id
-# - title
+# - code
 
 # journal
 # - journal_id
@@ -134,16 +185,3 @@ async def transfer_money():
 # - wallet_id
 # - amount
 # - currency_id
-
-# https://habr.com/ru/post/480394/
-
-# https://www.encode.io/databases/database_queries/
-# https://fastapi.tiangolo.com/advanced/async-sql-databases/
-# https://fastapi.tiangolo.com/tutorial/sql-databases/
-
-
-# todo добавить репозиторий
-# todo параметризовать алембик в докере
-# todo приделать идемпотентность
-# todo разбить на файлы
-# todo обновить pip3 freeze > requirements.txt
