@@ -1,32 +1,16 @@
 import logging
-import uuid
-from typing import Union, Tuple
+from typing import Union
 
 import asyncpg
-import databases
 from fastapi import FastAPI, Response, status
-from pydantic import BaseModel, Field
 
-from database import DATABASE_URL
-from dbmodels import Currency, accounts, wallets
+from database import db
+from schemas import AccountCreateRequest, AccountCreateResponse, APIError
+import crud
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-db = databases.Database(DATABASE_URL)
-
-
-class AccountCreateRequest(BaseModel):
-    name: str = Field(..., title="Name of the account", max_length=32)
-
-
-class AccountCreateResponse(BaseModel):
-    account_id: str
-    wallet_id: str
-
-
-class APIError(BaseModel):
-    error: str = "Internal Error"
 
 
 @app.on_event("startup")
@@ -37,28 +21,6 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     await db.disconnect()
-
-
-async def _create_account_with_wallet(account: AccountCreateRequest):
-    wallet_id = uuid.uuid4()
-    account_id = uuid.uuid4()
-    async with db.transaction():
-        insert_account = accounts.insert().values(
-            id=account_id,
-            name=account.name,
-            is_active=True,
-        )
-        insert_wallet = wallets.insert().values(
-            id=wallet_id,
-            account_id=account_id,
-            currency=Currency.USD,
-            amount=0,
-            is_active=True,
-        )
-        await db.execute(insert_account)
-        await db.execute(insert_wallet)
-    
-    return account_id, wallet_id
 
 
 # TODO Добавить идемпотентность
@@ -74,7 +36,7 @@ async def create_account(account: AccountCreateRequest, response: Response):
     attempts = 5
     while attempts != 0:
         try:
-            account_id, wallet_id = await _create_account_with_wallet(account)
+            account_id, wallet_id = await crud.create_account_with_wallet(account)
             return AccountCreateResponse(
                 account_id=str(account_id),
                 wallet_id=str(wallet_id),
