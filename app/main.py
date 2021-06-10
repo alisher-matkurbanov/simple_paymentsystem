@@ -11,23 +11,23 @@ from schemas import AccountCreateRequest, AccountCreateResponse, APIError, Exten
 
 logger = logging.getLogger(__name__)
 
-application = FastAPI()
+app = FastAPI()
 
 
-@application.on_event("startup")
+@app.on_event("startup")
 async def startup():
     if not db.is_connected:
         await db.connect()
 
 
-@application.on_event("shutdown")
+@app.on_event("shutdown")
 async def shutdown():
     if db.is_connected:
         await db.disconnect()
 
 
 # TODO Добавить идемпотентность
-@application.post(
+@app.post(
     "/accounts",
     status_code=status.HTTP_201_CREATED,
     response_model=Union[AccountCreateResponse, APIError],
@@ -41,7 +41,6 @@ async def create_account(account: AccountCreateRequest, response: Response):
     while attempts != 0:
         try:
             return await crud.create_account_with_wallet(account)
-        
         except asyncpg.exceptions.UniqueViolationError as e:
             attempts -= 1
             if attempts != 0:
@@ -51,13 +50,12 @@ async def create_account(account: AccountCreateRequest, response: Response):
             return APIError(
                 error=f"can't create account '{account}'; try again later"
             )
-        
         except Exception as e:
             logger.exception(e)
             return APIError()
 
 
-@application.get(
+@app.get(
     "/accounts/{account_id}",
     status_code=status.HTTP_200_OK,
     response_model=Union[ExtendedAccountResponse, APIError],
@@ -75,11 +73,11 @@ async def get_account(account_id: uuid.UUID, response: Response):
         return APIError()
 
 
-@application.post("/replenish")
+@app.post("/replenish")
 async def replenish_wallet():
     raise NotImplemented
 
 
-@application.post("/transfer")
+@app.post("/transfer")
 async def transfer_money():
     raise NotImplemented
