@@ -1,8 +1,8 @@
 import databases
 from sqlalchemy import MetaData
+from .config import settings
 
 # TODO secure the credentials
-DATABASE_URL = "postgresql://paymentsystem:paymentsystem@localhost:5432/paymentsystem"
 metadata = MetaData()
 
-db = databases.Database(DATABASE_URL)
+db = databases.Database(settings.db_url)

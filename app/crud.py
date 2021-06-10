@@ -1,8 +1,8 @@
 import uuid
 
-from database import db
-from dbmodels import Currency, accounts, wallets
-from schemas import AccountCreateRequest
+from .database import db
+from .dbmodels import Currency, accounts, wallets
+from .schemas import AccountCreateRequest
 
 
 async def create_account_with_wallet(account: AccountCreateRequest):

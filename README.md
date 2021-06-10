@@ -51,3 +51,6 @@ todo разбить на файлы
 # - currency_id
 
 Без докера ~1150 RPS на create account
+
+# Тесты
+https://testdriven.io/blog/fastapi-crud/

@@ -15,7 +15,7 @@ async def bound_fetch(sem, url, session):
 
 
 async def run(num):
-    url = "http://localhost:8000/accounts"
+    url = "http://0.0.0.0:8000/accounts"
     tasks = []
     # create instance of Semaphore
     sem = asyncio.Semaphore(1000)
@@ -34,6 +34,7 @@ async def run(num):
 number = 20000
 loop = asyncio.get_event_loop()
 s = time.time()
+print(f"run {number} create requests")
 future = asyncio.ensure_future(run(number))
 loop.run_until_complete(future)
 print(f"elapsed time: {time.time() - s}")

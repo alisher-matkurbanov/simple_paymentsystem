@@ -4,9 +4,9 @@ from typing import Union
 import asyncpg
 from fastapi import FastAPI, Response, status
 
-from database import db
-from schemas import AccountCreateRequest, AccountCreateResponse, APIError
-import crud
+from .database import db
+from .schemas import AccountCreateRequest, AccountCreateResponse, APIError
+from . import crud
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +15,14 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
-    await db.connect()
+    if not db.is_connected:
+        await db.connect()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await db.disconnect()
+    if db.is_connected:
+        await db.disconnect()
 
 
 # TODO Добавить идемпотентность
