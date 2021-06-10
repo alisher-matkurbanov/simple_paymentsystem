@@ -32,7 +32,8 @@ async def shutdown():
 async def create_account(account: AccountCreateRequest, response: Response):
     # we try to create account with wallet 5 times,
     # then report that we can't create account.
-    # creation may fails if generated uuid already presented in database.
+    # creation may fails if generated uuid already presented in database,
+    # however it is almost impossible
     attempts = 5
     while attempts != 0:
         try:
@@ -55,8 +56,8 @@ async def create_account(account: AccountCreateRequest, response: Response):
             return APIError()
 
 
-@app.get("/accounts/{account_id}")
-async def get_account(account_id):
+@app.get("/accounts/{account_id}", )
+async def get_account(account_id: str):
     raise NotImplemented
 
 

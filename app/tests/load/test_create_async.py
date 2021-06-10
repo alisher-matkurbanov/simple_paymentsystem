@@ -1,5 +1,3 @@
-# modified fetch function with semaphore
-import random
 import time
 
 import asyncio
