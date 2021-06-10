@@ -1,32 +1,33 @@
 import logging
+import uuid
 from typing import Union
 
 import asyncpg
 from fastapi import FastAPI, Response, status
 
-from . import crud
-from .database import db
-from .schemas import AccountCreateRequest, AccountCreateResponse, APIError
+import crud
+from database import db
+from schemas import AccountCreateRequest, AccountCreateResponse, APIError, ExtendedAccountResponse
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+application = FastAPI()
 
 
-@app.on_event("startup")
+@application.on_event("startup")
 async def startup():
     if not db.is_connected:
         await db.connect()
 
 
-@app.on_event("shutdown")
+@application.on_event("shutdown")
 async def shutdown():
     if db.is_connected:
         await db.disconnect()
 
 
 # TODO Добавить идемпотентность
-@app.post(
+@application.post(
     "/accounts",
     status_code=status.HTTP_201_CREATED,
     response_model=Union[AccountCreateResponse, APIError],
@@ -39,11 +40,8 @@ async def create_account(account: AccountCreateRequest, response: Response):
     attempts = 5
     while attempts != 0:
         try:
-            account_id, wallet_id = await crud.create_account_with_wallet(account)
-            return AccountCreateResponse(
-                account_id=str(account_id),
-                wallet_id=str(wallet_id),
-            )
+            return await crud.create_account_with_wallet(account)
+        
         except asyncpg.exceptions.UniqueViolationError as e:
             attempts -= 1
             if attempts != 0:
@@ -51,25 +49,38 @@ async def create_account(account: AccountCreateRequest, response: Response):
             logger.exception(e)
             response.status_code = status.HTTP_400_BAD_REQUEST
             return APIError(
-                error=f"can't create account '{account.name}'; try again later"
+                error=f"can't create account '{account}'; try again later"
             )
+        
         except Exception as e:
             logger.exception(e)
             return APIError()
 
 
-@app.get(
+@application.get(
     "/accounts/{account_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=Union[ExtendedAccountResponse, APIError],
+    include_in_schema=False,
 )
-async def get_account(account_id: str):
-    raise NotImplemented
+async def get_account(account_id: uuid.UUID, response: Response):
+    try:
+        account_response = await crud.get_account_with_wallet(account_id)
+        if account_response is None:
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return APIError(error=f"can't find account with account_id={account_id}")
+        return account_response
+    except Exception as e:
+        logger.exception(e)
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return APIError()
 
 
-@app.post("/replenish")
+@application.post("/replenish")
 async def replenish_wallet():
     raise NotImplemented
 
 
-@app.post("/transfer")
+@application.post("/transfer")
 async def transfer_money():
     raise NotImplemented
