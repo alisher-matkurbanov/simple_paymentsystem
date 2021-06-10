@@ -49,3 +49,5 @@ todo разбить на файлы
 # - wallet_id
 # - amount
 # - currency_id
+
+Без докера ~1150 RPS на create account
