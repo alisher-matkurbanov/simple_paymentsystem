@@ -4,9 +4,9 @@ from typing import Union
 import asyncpg
 from fastapi import FastAPI, Response, status
 
+from . import crud
 from .database import db
 from .schemas import AccountCreateRequest, AccountCreateResponse, APIError
-from . import crud
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,9 @@ async def create_account(account: AccountCreateRequest, response: Response):
             return APIError()
 
 
-@app.get("/accounts/{account_id}", )
+@app.get(
+    "/accounts/{account_id}",
+)
 async def get_account(account_id: str):
     raise NotImplemented
 

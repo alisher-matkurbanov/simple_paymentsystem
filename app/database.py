@@ -1,5 +1,6 @@
 import databases
 from sqlalchemy import MetaData
+
 from .config import settings
 
 # TODO secure the credentials

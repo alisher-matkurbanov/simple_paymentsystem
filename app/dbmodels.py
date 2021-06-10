@@ -1,17 +1,7 @@
 import enum
 
-from sqlalchemy import (
-    NUMERIC,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Integer,
-    String,
-    Table,
-    func,
-)
+from sqlalchemy import (NUMERIC, Boolean, Column, DateTime, Enum, ForeignKey,
+                        Integer, String, Table, func)
 from sqlalchemy.dialects.postgresql import UUID
 
 from .database import metadata

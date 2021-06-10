@@ -23,5 +23,5 @@ async def create_account_with_wallet(account: AccountCreateRequest):
         )
         await db.execute(insert_account)
         await db.execute(insert_wallet)
-    
+
     return account_id, wallet_id
