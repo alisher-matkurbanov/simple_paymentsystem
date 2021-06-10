@@ -61,7 +61,6 @@ async def create_account(account: AccountCreateRequest, response: Response):
     "/accounts/{account_id}",
     status_code=status.HTTP_200_OK,
     response_model=Union[ExtendedAccountResponse, APIError],
-    include_in_schema=False,
 )
 async def get_account(account_id: uuid.UUID, response: Response):
     try:
