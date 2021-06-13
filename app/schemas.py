@@ -1,10 +1,18 @@
 import datetime
 import decimal
+import enum
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
-from dbmodels import Currency
+
+class TransactionType(enum.Enum):
+    replenish = "REPLENISH"
+    transfer = "TRANSFER"
+
+
+class Currency(enum.Enum):
+    USD = "USD"
 
 
 class AccountCreateIn(BaseModel):
@@ -30,12 +38,31 @@ class ExtendedAccountOut(BaseModel):
 
 class TransferMoneyIn(BaseModel):
     from_wallet_id: uuid.UUID
+    from_currency: Currency
     to_wallet_id: uuid.UUID
-    currency: Currency
+    to_currency: Currency
     amount: decimal.Decimal
 
+    def is_currencies_match(self):
+        return self.to_currency == self.from_currency == Currency.USD
 
-class ReplenishWallet(BaseModel):
+
+class TransferMoneyOut(BaseModel):
+    from_wallet_id: uuid.UUID
+    from_currency: Currency
+    from_amount: decimal.Decimal
+    to_wallet_id: uuid.UUID
+    to_currency: Currency
+    to_amount: decimal.Decimal
+
+
+class ReplenishWalletInfo(BaseModel):
     wallet_id: uuid.UUID
     currency: Currency
-    amount: decimal.Decimal = Field(..., )
+    amount: decimal.Decimal  # todo add validator
+
+
+class ReplenishTransaction(BaseModel):
+    wallet_id: uuid.UUID
+    currency: Currency
+    amount: decimal.Decimal  # todo add validator

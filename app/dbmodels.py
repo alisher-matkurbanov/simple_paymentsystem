@@ -1,20 +1,8 @@
-import enum
-
-from sqlalchemy import (Numeric, Column, DateTime, Enum, ForeignKey,
+from sqlalchemy import (Numeric, Column, DateTime, ForeignKey,
                         Integer, String, Table, func)
 from sqlalchemy.dialects.postgresql import UUID
 
 from database import metadata
-
-
-class TransactionType(enum.Enum):
-    replenish = "REPLENISH"
-    transfer = "TRANSFER"
-
-
-class Currency(enum.Enum):
-    USD = "USD"
-
 
 # table to store account profile
 # some info can be added in future (email, phone)

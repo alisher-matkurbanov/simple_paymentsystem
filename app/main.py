@@ -6,9 +6,14 @@ from fastapi import FastAPI, status, HTTPException
 
 import crud
 from database import db
-from schemas import AccountCreateIn, AccountCreateOut, ExtendedAccountOut, ReplenishWallet
+from schemas import AccountCreateIn, AccountCreateOut, ExtendedAccountOut, ReplenishWalletInfo, TransferMoneyIn, \
+    TransferMoneyOut, Currency
 
 logger = logging.getLogger(__name__)
+
+# Шутка дня
+# FDD — fantasy driven development — когда данных нет, разработка идёт за счёт фантазии.
+# https://twitter.com/nikmostovoy/status/1403740216893095940
 
 app = FastAPI()
 
@@ -36,22 +41,17 @@ async def create_account(account: AccountCreateIn):
     # then report that we can't create account.
     # creation may fails if generated uuid already presented in database,
     # however it is almost impossible
-    attempts = 5
-    while attempts != 0:
-        try:
-            return await crud.create_account_with_wallet(account)
-        except asyncpg.exceptions.UniqueViolationError as e:
-            attempts -= 1
-            if attempts != 0:
-                continue
-            logger.exception(e)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"can't create account '{account}'; try again later"
-            )
-        except Exception as e:
-            logger.exception(e)
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    try:
+        return await crud.create_account_with_wallet(account)
+    except asyncpg.exceptions.UniqueViolationError as e:
+        logger.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"can't create account '{account}'; try again later"
+        )
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @app.get(
@@ -72,20 +72,37 @@ async def get_account(account_id: uuid.UUID):
 @app.post(
     "/replenish",
     status_code=status.HTTP_200_OK,
-    response_model=ReplenishWallet,
+    response_model=ReplenishWalletInfo,
 )
-async def replenish_wallet(data: ReplenishWallet):
+async def replenish_wallet(data: ReplenishWalletInfo):
     try:
         return await crud.replenish(data)
-    except crud.LimitOverflow as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
     except crud.NotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except crud.CRUDException as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@app.post("/transfer")
-async def transfer_money():
-    raise NotImplemented
+@app.post(
+    "/transfer",
+    status_code=status.HTTP_200_OK,
+    response_model=TransferMoneyOut,
+)
+async def transfer_money(data: TransferMoneyIn):
+    if not data.is_currencies_match():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"only {Currency.USD.value} currency is supported"
+        )
+    try:
+        return await crud.transfer(data)
+    except crud.NotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except crud.CRUDException as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
