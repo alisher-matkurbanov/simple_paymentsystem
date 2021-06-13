@@ -2,12 +2,13 @@ import logging
 import uuid
 
 import asyncpg
-from fastapi import FastAPI, status, HTTPException
+from fastapi import FastAPI, HTTPException, status
 
 import crud
 from database import db
-from schemas import AccountCreateIn, AccountCreateOut, ExtendedAccountOut, ReplenishWalletInfo, TransferMoneyIn, \
-    TransferMoneyOut, Currency
+from schemas import (AccountCreateIn, AccountCreateOut, Currency,
+                     ExtendedAccountOut, ReplenishWalletInfo, TransferMoneyIn,
+                     TransferMoneyOut)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ async def create_account(account: AccountCreateIn):
         logger.exception(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"can't create account '{account}'; try again later"
+            detail=f"can't create account '{account}'; try again later",
         )
     except Exception as e:
         logger.exception(e)
@@ -95,7 +96,7 @@ async def transfer_money(data: TransferMoneyIn):
     if not data.is_currencies_match():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"only {Currency.USD.value} currency is supported"
+            detail=f"only {Currency.USD.value} currency is supported",
         )
     try:
         return await crud.transfer(data)

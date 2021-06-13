@@ -1,5 +1,5 @@
-from sqlalchemy import (Numeric, Column, DateTime, ForeignKey,
-                        Integer, String, Table, func)
+from sqlalchemy import (Column, DateTime, ForeignKey, Integer, Numeric, String,
+                        Table, func)
 from sqlalchemy.dialects.postgresql import UUID
 
 from database import metadata
@@ -32,9 +32,7 @@ wallets = Table(
     Column("updated_at", DateTime(timezone=True), onupdate=func.now()),
 )
 
-currencies = Table(
-    "currency", metadata, Column("code", String(3), primary_key=True)
-)
+currencies = Table("currency", metadata, Column("code", String(3), primary_key=True))
 
 transactions = Table(
     "transaction",

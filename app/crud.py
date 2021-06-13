@@ -1,20 +1,14 @@
+import decimal
 import uuid
 from typing import Optional
 
+import config
 from database import db
 from dbmodels import accounts, wallets
-from schemas import (
-    AccountCreateIn,
-    AccountCreateOut,
-    ExtendedAccountOut,
-    TransferMoneyIn,
-    ReplenishWalletInfo,
-    TransactionType,
-    Currency,
-    ReplenishTransaction, TransferMoneyOut,
-)
-import config
-import decimal
+from schemas import (AccountCreateIn, AccountCreateOut,
+                     ExtendedAccountOut, ReplenishWalletInfo,
+                     TransactionType, TransferMoneyIn,
+                     TransferMoneyOut, Currency)
 
 
 class CRUDException(Exception):
@@ -86,10 +80,7 @@ async def get_wallet(wallet_id, currency):
         "SELECT * FROM wallet WHERE id = :wallet_id "
         "AND currency = :currency FOR UPDATE;"
     )
-    values = {
-        "wallet_id": wallet_id,
-        "currency": currency.value
-    }
+    values = {"wallet_id": wallet_id, "currency": currency.value}
     wallet = await db.fetch_one(query=query, values=values)
     if wallet is None:
         raise NotFound("wallet", values)
@@ -97,11 +88,12 @@ async def get_wallet(wallet_id, currency):
 
 
 async def log_transfer_transaction(data):
-    add_transaction = "INSERT INTO transaction(type) VALUES (:transaction_type) RETURNING id;"
+    add_transaction = (
+        "INSERT INTO transaction(type) VALUES (:transaction_type) RETURNING id;"
+    )
     
     transaction_id = await db.execute(
-        add_transaction,
-        values={"transaction_type": TransactionType.transfer.value}
+        add_transaction, values={"transaction_type": TransactionType.transfer.value}
     )
     add_posting = (
         "INSERT INTO posting(transaction_id, wallet_id, amount, currency) "
@@ -129,9 +121,11 @@ async def transfer(data: TransferMoneyIn) -> TransferMoneyOut:
         from_wallet = await get_wallet(data.from_wallet_id, data.from_currency)
         from_wallet_amount = from_wallet["amount"] - data.amount
         if from_wallet_amount < 0:
-            raise CRUDException(f"can't transfer {data.amount} {data.from_currency.value} "
-                                f"from wallet {data.from_wallet_id}: "
-                                f"not enough amount")
+            raise CRUDException(
+                f"can't transfer {data.amount} {data.from_currency.value} "
+                f"from wallet {data.from_wallet_id}: "
+                f"not enough amount"
+            )
         
         # getting to wallet and check constraints
         to_wallet = await get_wallet(data.to_wallet_id, data.to_currency)
@@ -144,7 +138,10 @@ async def transfer(data: TransferMoneyIn) -> TransferMoneyOut:
         
         # performing transfer transaction
         update_wallet = "UPDATE wallet SET amount = :amount WHERE id = :wallet_id;"
-        from_wallet_values = {"wallet_id": data.from_wallet_id, "amount": from_wallet_amount}
+        from_wallet_values = {
+            "wallet_id": data.from_wallet_id,
+            "amount": from_wallet_amount,
+        }
         await db.execute(query=update_wallet, values=from_wallet_values)
         to_wallet_values = {"wallet_id": data.to_wallet_id, "amount": to_wallet_amount}
         await db.execute(query=update_wallet, values=to_wallet_values)
@@ -182,10 +179,7 @@ async def replenish(data: ReplenishWalletInfo):
             )
         
         update = "UPDATE wallet SET amount = :amount WHERE id = :wallet_id;"
-        values = {
-            "amount": amount,
-            "wallet_id": data.wallet_id
-        }
+        values = {"amount": amount, "wallet_id": data.wallet_id}
         await db.execute(update, values=values)
         await log_replenish_transaction(data)
         return ReplenishWalletInfo(

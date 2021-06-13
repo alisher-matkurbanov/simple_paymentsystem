@@ -3,7 +3,7 @@ import decimal
 import enum
 import uuid
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 
 class TransactionType(enum.Enum):
@@ -17,7 +17,7 @@ class Currency(enum.Enum):
 
 class AccountCreateIn(BaseModel):
     name: str = Field(..., title="Name of the account", max_length=32)
-    
+
     def __str__(self):
         return self.name
 
