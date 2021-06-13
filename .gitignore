@@ -1,3 +1,4 @@
 .idea
 __pycache__
-.env
+# .env # included to repo cause it's test project
+.pytest_cache

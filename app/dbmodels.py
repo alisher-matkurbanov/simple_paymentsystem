@@ -2,7 +2,7 @@ from sqlalchemy import (Column, DateTime, ForeignKey, Integer, Numeric, String,
                         Table, func)
 from sqlalchemy.dialects.postgresql import UUID
 
-from database import metadata
+from app.database import metadata
 
 # table to store account profile
 # some info can be added in future (email, phone)

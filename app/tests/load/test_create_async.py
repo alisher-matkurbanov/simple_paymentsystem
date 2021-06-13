@@ -3,6 +3,7 @@ import time
 import asyncio
 from aiohttp import ClientSession
 
+
 async def fetch(url, session):
     async with session.post(url, json={"name": "alisher"}) as response:
         return await response.read()
@@ -30,6 +31,7 @@ async def run(num):
 
         responses = asyncio.gather(*tasks)
         await responses
+
 
 number = 20000
 loop = asyncio.get_event_loop()
