@@ -186,6 +186,7 @@ def test_replenish_wallet_ok(test_app, monkeypatch):
     assert response.json() == test_response_payload
 
 
+# todo add more cases(Limit, NotFound, Different Currencies,
 def test_transfer_ok(test_app, monkeypatch):
     from_wallet_id = uuid.uuid4()
     to_wallet_id = uuid.uuid4()

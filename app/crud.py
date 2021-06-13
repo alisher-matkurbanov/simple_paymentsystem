@@ -4,9 +4,9 @@ from app import config
 from app.database import db
 from app.dbmodels import accounts, wallets
 from app.schemas import (AccountCreateIn, AccountCreateOut,
-                     ExtendedAccountOut, ReplenishWalletInfo,
-                     TransactionType, TransferMoneyIn,
-                     TransferMoneyOut, Currency)
+                         ExtendedAccountOut, ReplenishWalletInfo,
+                         TransactionType, TransferMoneyIn,
+                         TransferMoneyOut, Currency)
 
 
 class CRUDException(Exception):
@@ -52,8 +52,7 @@ async def get_account_with_wallet(
         "account.id as account_id, account.name, "
         "account.created_at, wallet.id as wallet_id, "
         "wallet.currency, wallet.amount "
-        "FROM account "
-        "JOIN wallet "
+        "FROM account JOIN wallet "
         "ON wallet.account_id = account.id  "
         "WHERE  account.id = :account_id;"
     )
