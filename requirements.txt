@@ -36,3 +36,4 @@ uvicorn==0.14.0
 yarl==1.6.3
 pytest==6.2.4
 requests==2.25.1
+pytest-asyncio==0.15.1
