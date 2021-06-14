@@ -36,7 +36,7 @@ Run tests:
 - Used FastAPI as a backend framework because it is simple and performant.
 - Used PostgreSQL as a database backend because it's open source, performant and this task required consistency between
   tables (so ACID transactions). Also, PostgreSQL is mature and proven tool for such billing tasks. However,one of the
-  disadvantages of using Postgres is that in some performance measures it is slower than mysql. But I used Postgres so I
+  disadvantages of using Postgres is that in some performance measures it is slower than mysql. But I used Postgres before so I
   chose this one.  
   To store incoming data I created several tables:
     - `account(id, name, created_at, updated_at)` - store general information about user. Connected with wallet in
