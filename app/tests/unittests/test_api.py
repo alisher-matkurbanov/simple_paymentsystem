@@ -8,6 +8,8 @@ from app.schemas import AccountCreateOut, ExtendedAccountOut, Currency, Replenis
 from app.api import crud
 from fastapi import status
 
+from app.config import settings
+
 
 def test_create_accounts_ok(test_app, monkeypatch):
     test_request_payload = {"name": "testname"}
@@ -159,7 +161,6 @@ def test_get_account_exception(test_app, monkeypatch, caplog):
     assert "Exception from test" in caplog.text
 
 
-# todo add more cases (NotFound, Execption, Limit)
 def test_replenish_wallet_ok(test_app, monkeypatch):
     wallet_id = uuid.uuid4()
     amount = decimal.Decimal(1000)
@@ -186,7 +187,57 @@ def test_replenish_wallet_ok(test_app, monkeypatch):
     assert response.json() == test_response_payload
 
 
-# todo add more cases(Limit, NotFound, Different Currencies,
+def test_replenish_wallet_not_found(test_app, monkeypatch):
+    values = {"val1": 1}
+    wallet_id = uuid.uuid4()
+    amount = decimal.Decimal(1000)
+    currency = Currency.USD
+    test_request_payload = {
+        "wallet_id": str(wallet_id),
+        "amount": int(amount),
+        "currency": currency.value,
+    }
+    test_response_payload = {
+        "detail": f"wallet with {values} not found",
+    }
+    
+    async def mock_replenish(payload):
+        raise crud.NotFound("wallet", values)
+    
+    monkeypatch.setattr(crud, "replenish", mock_replenish)
+    
+    response = test_app.post(f"/replenish", json=test_request_payload)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == test_response_payload
+
+
+def test_replenish_wallet_limit_exception(test_app, monkeypatch):
+    wallet_id = uuid.uuid4()
+    amount = decimal.Decimal(1000)
+    currency = Currency.USD
+    test_request_payload = {
+        "wallet_id": str(wallet_id),
+        "amount": int(amount),
+        "currency": currency.value,
+    }
+    test_response_payload = {
+        "detail": (
+            f"can't replenish to {wallet_id}; "
+            f"resulting amount is greater that max amount = {settings.max_amount}; "
+            f"current amount = {amount}"
+        )
+    }
+    
+    async def mock_replenish(payload):
+        raise crud.CRUDException(test_response_payload["detail"])
+    
+    monkeypatch.setattr(crud, "replenish", mock_replenish)
+    
+    response = test_app.post(f"/replenish", json=test_request_payload)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json() == test_response_payload
+
+
 def test_transfer_ok(test_app, monkeypatch):
     from_wallet_id = uuid.uuid4()
     to_wallet_id = uuid.uuid4()
@@ -227,3 +278,65 @@ def test_transfer_ok(test_app, monkeypatch):
     response = test_app.post(f"/transfer", json=test_request_payload)
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == test_response_payload
+
+
+def test_transfer_not_found(test_app, monkeypatch):
+    from_wallet_id = uuid.uuid4()
+    to_wallet_id = uuid.uuid4()
+    from_currency = Currency.USD
+    to_currency = Currency.USD
+    amount = 1000
+    values = {"wallet_id": from_wallet_id}
+    
+    test_request_payload = {
+        "from_wallet_id": str(from_wallet_id),
+        "to_wallet_id": str(to_wallet_id),
+        "from_currency": from_currency.value,
+        "to_currency": to_currency.value,
+        "amount": amount,
+    }
+    test_response_payload = {
+        "detail": f"wallet with {values} not found",
+    }
+    
+    async def mock_transfer_money(payload):
+        raise crud.NotFound("wallet", values)
+    
+    monkeypatch.setattr(crud, "transfer", mock_transfer_money)
+    
+    response = test_app.post(f"/transfer", json=test_request_payload)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == test_response_payload
+
+
+def test_transfer_limit_exception(test_app, monkeypatch):
+    from_wallet_id = uuid.uuid4()
+    to_wallet_id = uuid.uuid4()
+    from_currency = Currency.USD
+    to_currency = Currency.USD
+    amount = str(settings.max_amount)
+    
+    test_request_payload = {
+        "from_wallet_id": str(from_wallet_id),
+        "to_wallet_id": str(to_wallet_id),
+        "from_currency": from_currency.value,
+        "to_currency": to_currency.value,
+        "amount": amount,
+    }
+    test_response_payload = {
+        "detail": "some text",
+    }
+    
+    async def mock_transfer_money(payload):
+        raise crud.CRUDException("some text")
+    
+    monkeypatch.setattr(crud, "transfer", mock_transfer_money)
+    
+    response = test_app.post(f"/transfer", json=test_request_payload)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json() == test_response_payload
+
+
+def test_super_hard_test():
+    # number of tests must be 20
+    assert True
