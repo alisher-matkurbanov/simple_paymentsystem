@@ -50,7 +50,7 @@ Run tests:
       wallets. It is possible to restore wallet amount depending on `transaction` and this tables. Used to log wallet
       operations.
 
-####Improvements
+#### Improvements
 There are several improvements in architecture of this system:
 
 - Add some rate limiter to prevent users overuse this API.
