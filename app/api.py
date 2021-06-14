@@ -15,17 +15,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# TODO Добавить идемпотентность
 @router.post(
     "/accounts",
     status_code=status.HTTP_201_CREATED,
     response_model=AccountCreateOut,
 )
 async def create_account(account: AccountCreateIn):
-    # we try to create account with wallet 5 times,
-    # then report that we can't create account.
-    # creation may fails if generated uuid already presented in database,
-    # however it is almost impossible
     try:
         return await crud.create_account_with_wallet(account)
     except asyncpg.exceptions.UniqueViolationError as e:
