@@ -1,56 +1,61 @@
-###simple payment system
+### Simple Payment System
 
-https://habr.com/ru/post/480394/
+Simple payment system REST API.  
+Allows:
 
-https://www.encode.io/databases/database_queries/
-https://fastapi.tiangolo.com/advanced/async-sql-databases/
-https://fastapi.tiangolo.com/tutorial/sql-databases/
+- create account with wallet
+- get account with wallet
+- replenish wallet amount
+- transfer amount from one wallet to another
 
+Currently supports only USD currency.  
+All the operations performs without commision.
 
-добавить репозиторий
-todo параметризовать алембик в докере
-todo приделать идемпотентность
-todo разбить на файлы
+#### Built with
 
-# CREATE DATABASE yourdbname;
-# CREATE USER youruser WITH ENCRYPTED PASSWORD 'yourpass';
-# GRANT ALL PRIVILEGES ON DATABASE yourdbname TO youruser;
+- python-3.8
+- FastAPI
+- PostgreSQL
+- [databases](https://github.com/encode/databases) for async work with database
+- Alembic for migrations
+- Docker with Docker Compose
 
+#### Getting started
 
+Run the project: `docker-compose up --build -d`  
+You can change default environment variables in `.env` file.
 
+Run tests:
 
-# accounts
-# - account_id: UUID
-# - name: String
-# - active: Bool
-# - created_at
-# - updated_at
+- set `TESTING=1` in `.env`
+- build project:`docker-compose down -v && docker-compose up --build -d`
+- run tests: `docker-compsoe exec backend pytest app/tests/unittests -s -vv`
 
-# wallet 1 - 1 to accounts
-# - account_id: UUID
-# - wallet_id: UUID
-# - currency_id: int
-# - amount: Decimal
-# - active: Bool
-# - created_at
-# - updated_at
+#### Comments
 
-# currency
-# - code
+- Used FastAPI as a backend framework because it is simple and performant.
+- Used PostgreSQL as a database backend because it's open source, performant and this task required consistency between
+  tables (so ACID transactions). Also, PostgreSQL is mature and proven tool for such billing tasks. However,one of the
+  disadvantages of using Postgres is that in some performance measures it is slower than mysql. But I used Postgres so I
+  chose this one.  
+  To store incoming data I created several tables:
+    - `account(id, name, created_at, updated_at)` - store general information about user. Connected with wallet in
+      one-to-one relationship.
+    - `wallet(id, account_id, amount, currency, created_at, updated_at)` - store information about current account money
+    - `currency(code)` - static table with only one currency - `USD`
+    - `transaction(id, type, created_at)` - append only table; store information about wallet transactions. Support 2
+      types of transaction supported - `replenish` and `transfer`. Row created when replenish wallet or transfer money
+      performs.
+    - `posting(id, transaction_id, amount, currency)` - append only table; information about transaction amount and
+      wallets. It is possible to restore wallet amount depending on `transaction` and this tables. Used to log wallet
+      operations.
 
-# journal
-# - journal_id
-# - transaction_type
-# - created_at
+There are several improvements in architecture of this system:
 
-# posting
-# - posting_id
-# - journal_id
-# - wallet_id
-# - amount
-# - currency_id
-
-Без докера ~1150 RPS на create account
-
-# Тесты
-https://testdriven.io/blog/fastapi-crud/
+- Add some rate limiter to prevent users overuse this API.
+- Add Redis or memcached to cache db results of reading operations
+  (however I think this system will mostly be used for write operations, so it is not really necessary).
+- Add idempotency tokens support to create account, replenish wallet and transfer money methods to handle correctly
+  identical sequential operations from one user.
+  
+  
