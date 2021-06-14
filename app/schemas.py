@@ -3,7 +3,9 @@ import decimal
 import enum
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
+
+from app.config import settings
 
 
 class TransactionType(enum.Enum):
@@ -13,6 +15,20 @@ class TransactionType(enum.Enum):
 
 class Currency(enum.Enum):
     USD = "USD"
+
+
+def decimal_validator(dec):
+    if not (0 <= dec <= settings.max_amount):
+        raise ValueError(f"amount in range [{0}, {settings.max_amount}] allowed")
+    if dec != round(dec, settings.decimal_scale):
+        raise ValueError(f"only {settings.decimal_scale} decimals allowed for amount")
+    return dec
+
+
+def currency_validator(cur):
+    if cur != Currency.USD:
+        raise ValueError(f"only {Currency.USD} allowed")
+    return cur
 
 
 class AccountCreateIn(BaseModel):
@@ -35,6 +51,14 @@ class ExtendedAccountOut(BaseModel):
     amount: decimal.Decimal
     created_at: datetime.datetime
 
+    @validator("amount")
+    def amount_validator(cls, v):
+        return decimal_validator(v)
+
+    @validator("currency")
+    def currency_validator(cls, v):
+        return currency_validator(v)
+
 
 class TransferMoneyIn(BaseModel):
     from_wallet_id: uuid.UUID
@@ -44,7 +68,15 @@ class TransferMoneyIn(BaseModel):
     amount: decimal.Decimal
 
     def is_currencies_match(self):
-        return self.to_currency == self.from_currency == Currency.USD
+        return self.to_currency == self.from_currency
+
+    @validator("amount")
+    def amount_validator(cls, v):
+        return decimal_validator(v)
+
+    @validator("from_currency", "to_currency")
+    def currency_validator(cls, v):
+        return currency_validator(v)
 
 
 class TransferMoneyOut(BaseModel):
@@ -55,14 +87,34 @@ class TransferMoneyOut(BaseModel):
     to_currency: Currency
     to_amount: decimal.Decimal
 
+    @validator("to_amount", "from_amount")
+    def amount_validator(cls, v):
+        return decimal_validator(v)
+
 
 class ReplenishWalletInfo(BaseModel):
     wallet_id: uuid.UUID
     currency: Currency
-    amount: decimal.Decimal  # todo add validator
+    amount: decimal.Decimal
+
+    @validator("amount")
+    def amount_validator(cls, v):
+        return decimal_validator(v)
+
+    @validator("currency")
+    def currency_validator(cls, v):
+        return currency_validator(v)
 
 
 class ReplenishTransaction(BaseModel):
     wallet_id: uuid.UUID
     currency: Currency
-    amount: decimal.Decimal  # todo add validator
+    amount: decimal.Decimal
+
+    @validator("amount")
+    def amount_validator(cls, v):
+        return decimal_validator(v)
+
+    @validator("currency")
+    def currency_validator(cls, v):
+        return currency_validator(v)

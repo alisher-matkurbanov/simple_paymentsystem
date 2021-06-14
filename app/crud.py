@@ -1,12 +1,12 @@
 import uuid
 
 from app import config
+from app.config import settings
 from app.database import db
 from app.dbmodels import accounts, wallets
-from app.schemas import (AccountCreateIn, AccountCreateOut,
+from app.schemas import (AccountCreateIn, AccountCreateOut, Currency,
                          ExtendedAccountOut, ReplenishWalletInfo,
-                         TransactionType, TransferMoneyIn,
-                         TransferMoneyOut, Currency)
+                         TransactionType, TransferMoneyIn, TransferMoneyOut)
 
 
 class CRUDException(Exception):
@@ -37,7 +37,7 @@ async def create_account_with_wallet(account: AccountCreateIn) -> AccountCreateO
         )
         await db.execute(insert_account)
         await db.execute(insert_wallet)
-    
+
     return AccountCreateOut(
         account_id=str(account_id),
         wallet_id=str(wallet_id),
@@ -45,7 +45,7 @@ async def create_account_with_wallet(account: AccountCreateIn) -> AccountCreateO
 
 
 async def get_account_with_wallet(
-        account_id: uuid.UUID,
+    account_id: uuid.UUID,
 ) -> ExtendedAccountOut:
     query = (
         "SELECT "
@@ -56,12 +56,12 @@ async def get_account_with_wallet(
         "ON wallet.account_id = account.id  "
         "WHERE  account.id = :account_id;"
     )
-    
+
     values = {"account_id": account_id}
     row = await db.fetch_one(query=query, values=values)
     if row is None:
         raise NotFound("account", values)
-    
+
     return ExtendedAccountOut(
         account_id=row["account_id"],
         name=row["name"],
@@ -84,11 +84,11 @@ async def get_wallet(wallet_id, currency):
     return wallet
 
 
-async def log_transfer_transaction(data):
+async def _log_transfer_transaction(data):
     add_transaction = (
         "INSERT INTO transaction(type) VALUES (:transaction_type) RETURNING id;"
     )
-    
+
     transaction_id = await db.execute(
         add_transaction, values={"transaction_type": TransactionType.transfer.value}
     )
@@ -112,79 +112,7 @@ async def log_transfer_transaction(data):
     await db.execute(add_posting, values=values)
 
 
-async def transfer(data: TransferMoneyIn) -> TransferMoneyOut:
-    async with db.transaction():
-        # getting from wallet and check constraints
-        from_wallet = await get_wallet(data.from_wallet_id, data.from_currency)
-        from_wallet_amount = from_wallet["amount"] - data.amount
-        if from_wallet_amount < 0:
-            raise CRUDException(
-                f"can't transfer {data.amount} {data.from_currency.value} "
-                f"from wallet {data.from_wallet_id}: "
-                f"not enough amount"
-            )
-        
-        # getting to wallet and check constraints
-        to_wallet = await get_wallet(data.to_wallet_id, data.to_currency)
-        to_wallet_amount = to_wallet["amount"] + data.amount
-        if to_wallet_amount > config.MAX_AMOUNT:
-            raise CRUDException(
-                f"can't replenish {data.to_wallet_id}; "
-                f"limit = 10**{config.MAX_AMOUNT_DEGREE}"
-            )
-        
-        # performing transfer transaction
-        update_wallet = "UPDATE wallet SET amount = :amount WHERE id = :wallet_id;"
-        from_wallet_values = {
-            "wallet_id": data.from_wallet_id,
-            "amount": from_wallet_amount,
-        }
-        await db.execute(query=update_wallet, values=from_wallet_values)
-        to_wallet_values = {"wallet_id": data.to_wallet_id, "amount": to_wallet_amount}
-        await db.execute(query=update_wallet, values=to_wallet_values)
-        
-        # logging transaction
-        await log_transfer_transaction(data)
-        
-        return TransferMoneyOut(
-            from_wallet_id=data.from_wallet_id,
-            from_amount=from_wallet_amount,
-            from_currency=data.from_currency,
-            to_wallet_id=data.to_wallet_id,
-            to_amount=to_wallet_amount,
-            to_currency=data.to_currency,
-        )
-
-
-async def replenish(data: ReplenishWalletInfo):
-    async with db.transaction():
-        query = (
-            "SELECT * FROM wallet WHERE id = :wallet_id "
-            "AND currency = :currency FOR UPDATE;"
-        )
-        
-        values = {"wallet_id": data.wallet_id, "currency": data.currency.value}
-        wallet = await db.fetch_one(query=query, values=values)
-        if wallet is None:
-            raise NotFound("wallet", values)
-        
-        amount = wallet["amount"] + data.amount
-        if amount > config.MAX_AMOUNT:
-            raise CRUDException(
-                f"can't replenish {data.wallet_id}; "
-                f"limit = 10**{config.MAX_AMOUNT_DEGREE}"
-            )
-        
-        update = "UPDATE wallet SET amount = :amount WHERE id = :wallet_id;"
-        values = {"amount": amount, "wallet_id": data.wallet_id}
-        await db.execute(update, values=values)
-        await log_replenish_transaction(data)
-        return ReplenishWalletInfo(
-            wallet_id=data.wallet_id, amount=amount, currency=data.currency
-        )
-
-
-async def log_replenish_transaction(data):
+async def _log_replenish_transaction(data):
     add_transaction = (
         "INSERT INTO transaction(type) VALUES(:transaction_type) RETURNING id;"
     )
@@ -202,3 +130,77 @@ async def log_replenish_transaction(data):
         "currency": data.currency.value,
     }
     await db.execute(add_posting, values=values)
+
+
+async def transfer(data: TransferMoneyIn) -> TransferMoneyOut:
+    async with db.transaction():
+        # getting from wallet and check constraints
+        from_wallet = await get_wallet(data.from_wallet_id, data.from_currency)
+        from_wallet_amount = from_wallet["amount"] - data.amount
+        if from_wallet_amount < 0:
+            raise CRUDException(
+                f"can't transfer {data.amount} {data.from_currency.value} "
+                f"from wallet {data.from_wallet_id}: "
+                f"not enough amount"
+            )
+
+        # getting to wallet and check constraints
+        to_wallet = await get_wallet(data.to_wallet_id, data.to_currency)
+        to_wallet_amount = to_wallet["amount"] + data.amount
+        if to_wallet_amount > settings.max_amount:
+            raise CRUDException(
+                f"can't transfer to {data.to_wallet_id}; "
+                f"resulting amount is greater that max amount = {settings.max_amount}; "
+                f"current amount = {to_wallet['amount']}"
+            )
+
+        # performing transfer transaction
+        update_wallet = "UPDATE wallet SET amount = :amount WHERE id = :wallet_id;"
+        from_wallet_values = {
+            "wallet_id": data.from_wallet_id,
+            "amount": from_wallet_amount,
+        }
+        await db.execute(query=update_wallet, values=from_wallet_values)
+        to_wallet_values = {"wallet_id": data.to_wallet_id, "amount": to_wallet_amount}
+        await db.execute(query=update_wallet, values=to_wallet_values)
+
+        # logging transaction
+        await _log_transfer_transaction(data)
+
+        return TransferMoneyOut(
+            from_wallet_id=data.from_wallet_id,
+            from_amount=from_wallet_amount,
+            from_currency=data.from_currency,
+            to_wallet_id=data.to_wallet_id,
+            to_amount=to_wallet_amount,
+            to_currency=data.to_currency,
+        )
+
+
+async def replenish(data: ReplenishWalletInfo):
+    async with db.transaction():
+        query = (
+            "SELECT * FROM wallet WHERE id = :wallet_id "
+            "AND currency = :currency FOR UPDATE;"
+        )
+
+        values = {"wallet_id": data.wallet_id, "currency": data.currency.value}
+        wallet = await db.fetch_one(query=query, values=values)
+        if wallet is None:
+            raise NotFound("wallet", values)
+
+        amount = wallet["amount"] + data.amount
+        if amount > settings.max_amount:
+            raise CRUDException(
+                f"can't replenish to {data.wallet_id}; "
+                f"resulting amount is greater that max amount = {settings.max_amount}; "
+                f"current amount = {wallet['amount']}"
+            )
+
+        update = "UPDATE wallet SET amount = :amount WHERE id = :wallet_id;"
+        values = {"amount": amount, "wallet_id": data.wallet_id}
+        await db.execute(update, values=values)
+        await _log_replenish_transaction(data)
+        return ReplenishWalletInfo(
+            wallet_id=data.wallet_id, amount=amount, currency=data.currency
+        )

@@ -2,6 +2,7 @@ from sqlalchemy import (Column, DateTime, ForeignKey, Integer, Numeric, String,
                         Table, func)
 from sqlalchemy.dialects.postgresql import UUID
 
+from app.config import settings
 from app.database import metadata
 
 # table to store account profile
@@ -25,7 +26,11 @@ wallets = Table(
     Column("id", UUID(as_uuid=True), primary_key=True),
     Column("account_id", ForeignKey("account.id"), nullable=False),
     Column("currency", ForeignKey("currency.code"), nullable=False),
-    Column("amount", Numeric(precision=100, scale=2), nullable=False),
+    Column(
+        "amount",
+        Numeric(precision=settings.decimal_precision, scale=settings.decimal_scale),
+        nullable=False,
+    ),
     Column(
         "created_at", DateTime(timezone=True), server_default=func.now(), nullable=False
     ),
@@ -50,6 +55,10 @@ posting = Table(
     Column("id", Integer, primary_key=True),
     Column("transaction_id", ForeignKey("transaction.id"), nullable=False),
     Column("wallet_id", ForeignKey("wallet.id"), nullable=False),
-    Column("amount", Numeric(precision=100, scale=2), nullable=False),
+    Column(
+        "amount",
+        Numeric(precision=settings.decimal_precision, scale=settings.decimal_scale),
+        nullable=False,
+    ),
     Column("currency", ForeignKey("currency.code"), nullable=False),
 )
