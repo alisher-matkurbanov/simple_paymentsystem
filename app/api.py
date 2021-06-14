@@ -1,13 +1,14 @@
+import logging
 import uuid
 
 import asyncpg
-import logging
 from fastapi import APIRouter, HTTPException
 from starlette import status
 
 from app import crud
-from app.schemas import AccountCreateOut, AccountCreateIn, ExtendedAccountOut, ReplenishWalletInfo, TransferMoneyOut, \
-    TransferMoneyIn, Currency
+from app.schemas import (AccountCreateIn, AccountCreateOut, Currency,
+                         ExtendedAccountOut, ReplenishWalletInfo,
+                         TransferMoneyIn, TransferMoneyOut)
 
 logger = logging.getLogger(__name__)
 
