@@ -98,10 +98,16 @@ async def transfer_money(from_accounts, to_accounts):
         await responses
         return responses
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="make loading to api")
     parser.add_argument("--accounts", type=int, help="num accounts to create", required=True)
     args = parser.parse_args()
+    
+    is_testing = input("Did you set TESTING=0 in .env? (y/n) ")
+    if is_testing.lower() not in ("yes", "y"):
+        print("Please set TESTING=0 in .env to run this test")
+        exit(1)
     
     number = args.accounts
     loop = asyncio.get_event_loop()
@@ -122,7 +128,7 @@ if __name__ == "__main__":
     # transfer money
     s3 = time.time()
     future = asyncio.ensure_future(
-        transfer_money(created_accounts[:int(number/2)], created_accounts[int(number/2):])
+        transfer_money(created_accounts[:int(number / 2)], created_accounts[int(number / 2):])
     )
     transferred = loop.run_until_complete(future)
     print(f"{number / 2} transfers made during time: {time.time() - s3} s")
