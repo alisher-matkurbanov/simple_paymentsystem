@@ -105,7 +105,7 @@ async def _log_transfer_transaction(data):
     await db.execute(add_posting, values=values)
     values = {
         "transaction_id": transaction_id,
-        "wallet_id": data.from_wallet_id,
+        "wallet_id": data.to_wallet_id,
         "amount": data.amount,
         "currency": data.to_currency.value,
     }
