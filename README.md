@@ -1,8 +1,8 @@
 ### Simple Payment System
 
-Simple payment system REST API.  
-Allows:
+**Simple payment system REST API.**  
 
+Allows user:
 - create account with wallet
 - get account with wallet
 - replenish wallet amount
@@ -50,6 +50,7 @@ Run tests:
       wallets. It is possible to restore wallet amount depending on `transaction` and this tables. Used to log wallet
       operations.
 
+####Improvements
 There are several improvements in architecture of this system:
 
 - Add some rate limiter to prevent users overuse this API.
@@ -57,5 +58,4 @@ There are several improvements in architecture of this system:
   (however I think this system will mostly be used for write operations, so it is not really necessary).
 - Add idempotency tokens support to create account, replenish wallet and transfer money methods to handle correctly
   identical sequential operations from one user.
-  
   
