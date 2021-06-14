@@ -85,6 +85,12 @@ async def get_wallet(wallet_id, currency):
 
 
 async def _log_transfer_transaction(data):
+    """
+    MUST BE RUN INSIDE TRANSACTION
+    Save transfer transaction info
+    - one row in transaction table
+    - 2 rows in posting table connected with transaction row
+    """
     add_transaction = (
         "INSERT INTO transaction(type) VALUES (:transaction_type) RETURNING id;"
     )
@@ -113,6 +119,12 @@ async def _log_transfer_transaction(data):
 
 
 async def _log_replenish_transaction(data):
+    """
+    MUST BE RUN INSIDE TRANSACTION
+    Save transfer transaction info
+    - one row in transaction table
+    - one row in posting table connected with transaction row
+    """
     add_transaction = (
         "INSERT INTO transaction(type) VALUES(:transaction_type) RETURNING id;"
     )

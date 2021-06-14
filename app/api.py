@@ -21,6 +21,7 @@ router = APIRouter()
     response_model=AccountCreateOut,
 )
 async def create_account(account: AccountCreateIn):
+    """Create account with wallet and return account_id and wallet_id """
     try:
         return await crud.create_account_with_wallet(account)
     except asyncpg.exceptions.UniqueViolationError as e:
@@ -40,6 +41,7 @@ async def create_account(account: AccountCreateIn):
     response_model=ExtendedAccountOut,
 )
 async def get_account(account_id: uuid.UUID):
+    """Get account with wallet information by account_id"""
     try:
         return await crud.get_account_with_wallet(account_id)
     except crud.NotFound as e:
@@ -55,6 +57,7 @@ async def get_account(account_id: uuid.UUID):
     response_model=ReplenishWalletInfo,
 )
 async def replenish_wallet(data: ReplenishWalletInfo):
+    """Replenish wallet with by wallet_id"""
     try:
         return await crud.replenish(data)
     except crud.NotFound as e:
@@ -72,6 +75,7 @@ async def replenish_wallet(data: ReplenishWalletInfo):
     response_model=TransferMoneyOut,
 )
 async def transfer_money(data: TransferMoneyIn):
+    """Transfers money from one wallet to another"""
     if not data.is_currencies_match():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
