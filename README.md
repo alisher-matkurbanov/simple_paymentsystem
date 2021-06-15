@@ -53,7 +53,7 @@ Run tests:
 #### Improvements
 There are several improvements in architecture of this system:
 
-- Add some rate limiter to prevent users overuse this API.
+- Add rate limiter to prevent users overuse this API.
 - Add Redis or memcached to cache db results of reading operations
   (however I think this system will mostly be used for write operations, so it is not really necessary).
 - Add idempotency tokens support to create account, replenish wallet and transfer money methods to handle correctly
