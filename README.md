@@ -43,7 +43,7 @@ Run tests:
       one-to-one relationship.
     - `wallet(id, account_id, amount, currency, created_at, updated_at)` - store information about current account money
     - `currency(code)` - static table with only one currency - `USD`
-    - `transaction(id, type, created_at)` - append only table; store information about wallet transactions. Support 2
+    - `transaction(id, type, created_at)` - append only table; store information about wallet transactions. 2
       types of transaction supported - `replenish` and `transfer`. Row created when replenish wallet or transfer money
       performs.
     - `posting(id, transaction_id, amount, currency)` - append only table; information about transaction amount and
